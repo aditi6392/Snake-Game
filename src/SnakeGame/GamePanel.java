@@ -63,24 +63,48 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void draw(Graphics g) {
         if (running) {
-            // draw food (red square)
-            g.setColor(Color.RED);
-            g.fillRect(food.x * UNIT_SIZE, food.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
-
-            // draw snake
-            for (Point p : snake) {
-                g.setColor(Color.GREEN);
-                g.fillRect(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
+            // Optional: draw subtle grid to see the cells
+            g.setColor(new Color(50, 50, 50)); // dark gray
+            for (int i = 0; i <= WIDTH / UNIT_SIZE; i++) {
+                g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, HEIGHT);
+            }
+            for (int j = 0; j <= HEIGHT / UNIT_SIZE; j++) {
+                g.drawLine(0, j * UNIT_SIZE, WIDTH, j * UNIT_SIZE);
             }
 
-            // draw score
+            // Draw food with small highlight
+            g.setColor(Color.RED);
+            g.fillOval(food.x * UNIT_SIZE, food.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
             g.setColor(Color.WHITE);
-            g.setFont(new Font("Arial", Font.BOLD, 16));
-            g.drawString("Score: " + score, 10, 20);
+            g.fillOval(food.x * UNIT_SIZE + 5, food.y * UNIT_SIZE + 5, UNIT_SIZE / 3, UNIT_SIZE / 3);
+
+            // Draw snake
+            for (int i = 0; i < snake.size(); i++) {
+                Point p = snake.get(i);
+
+                if (i == 0) {
+                    // Head: bright yellow, slightly larger
+                    g.setColor(Color.YELLOW);
+                    g.fillOval(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE + 2, UNIT_SIZE + 2);
+                } else {
+                    // Body: gradient green from dark to light
+                    float ratio = (float) i / snake.size();
+                    g.setColor(new Color(0, (int) (255 * (1 - ratio)), 0));
+                    g.fillOval(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
+                }
+            }
+
+            // Display score
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            g.drawString("Score: " + score, 10, 25);
+
         } else {
+            // Game over screen
             gameOver(g);
         }
     }
+
 
     // === Game over screen ===
     private void gameOver(Graphics g) {
