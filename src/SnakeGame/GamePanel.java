@@ -1,27 +1,28 @@
 package SnakeGame;
 
+import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Random;
 
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
-    // === Constants for board size ===
+
     private final int WIDTH = 600;
     private final int HEIGHT = 600;
     private final int UNIT_SIZE = 20;
 
-    // === Game objects ===
     private Timer timer;
-    private LinkedList<Point> snake; // stores snake body
-    private Point food;              // food position
-    private Direction direction = Direction.RIGHT; // start moving right
+    private LinkedList<Point> snake;
+    private Point food;
+    private Direction direction = Direction.RIGHT;
     private boolean running = false;
     private Random random;
     private int score = 0;
 
-    // === Constructor ===
     public GamePanel() {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setBackground(Color.black);
@@ -33,8 +34,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     // === Start a new game ===
     public void startGame() {
         snake = new LinkedList<>();
-
-        // Start snake with 3 segments
         snake.add(new Point(5, 5));
         snake.add(new Point(4, 5));
         snake.add(new Point(3, 5));
@@ -43,16 +42,29 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         spawnFood();
         running = true;
 
-        // timer controls game speed (ms per step)
         timer = new Timer(150, this);
         timer.start();
     }
 
-    // === Spawn food at random location ===
+    // === Spawn food ===
     private void spawnFood() {
         int x = random.nextInt(WIDTH / UNIT_SIZE);
         int y = random.nextInt(HEIGHT / UNIT_SIZE);
         food = new Point(x, y);
+    }
+
+    // === Sound effect method ===
+    public void playSound(String fileName) {
+        try {
+            AudioInputStream audio = AudioSystem.getAudioInputStream(
+                    getClass().getResource("/SnakeGame/" + fileName)
+            );
+            Clip clip = AudioSystem.getClip();
+            clip.open(audio);
+            clip.start();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+            e.printStackTrace();
+        }
     }
 
     // === Painting logic ===
@@ -63,8 +75,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void draw(Graphics g) {
         if (running) {
-            // Optional: draw subtle grid to see the cells
-            g.setColor(new Color(50, 50, 50)); // dark gray
+            // Grid
+            g.setColor(new Color(50, 50, 50));
             for (int i = 0; i <= WIDTH / UNIT_SIZE; i++) {
                 g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, HEIGHT);
             }
@@ -72,7 +84,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 g.drawLine(0, j * UNIT_SIZE, WIDTH, j * UNIT_SIZE);
             }
 
-            // Draw food with small highlight
+            // Draw food
             g.setColor(Color.RED);
             g.fillOval(food.x * UNIT_SIZE, food.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
             g.setColor(Color.WHITE);
@@ -81,13 +93,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             // Draw snake
             for (int i = 0; i < snake.size(); i++) {
                 Point p = snake.get(i);
-
                 if (i == 0) {
-                    // Head: bright yellow, slightly larger
                     g.setColor(Color.YELLOW);
                     g.fillOval(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE + 2, UNIT_SIZE + 2);
                 } else {
-                    // Body: gradient green from dark to light
                     float ratio = (float) i / snake.size();
                     g.setColor(new Color(0, (int) (255 * (1 - ratio)), 0));
                     g.fillOval(p.x * UNIT_SIZE, p.y * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
@@ -98,13 +107,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 20));
             g.drawString("Score: " + score, 10, 25);
-
         } else {
-            // Game over screen
             gameOver(g);
         }
     }
-
 
     // === Game over screen ===
     private void gameOver(Graphics g) {
@@ -113,7 +119,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         g.drawString("Game Over! Score: " + score, WIDTH / 2 - 100, HEIGHT / 2);
     }
 
-    // === Main game loop (called every timer tick) ===
+    // === Main game loop ===
     public void actionPerformed(ActionEvent e) {
         if (running) {
             moveSnake();
@@ -128,7 +134,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         Point head = snake.getFirst();
         Point newHead = new Point(head);
 
-        // move head depending on direction
         switch (direction) {
             case UP -> newHead.y--;
             case DOWN -> newHead.y++;
@@ -136,46 +141,44 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             case RIGHT -> newHead.x++;
         }
 
-        // add new head
         snake.addFirst(newHead);
 
-        // if no food eaten, remove tail (keeps length constant)
         if (!newHead.equals(food)) {
             snake.removeLast();
         }
     }
 
-    // === Check if snake eats food ===
+    // === Check food collision ===
     private void checkFood() {
         Point head = snake.getFirst();
         if (head.equals(food)) {
             score++;
             spawnFood();
-            // snake grows automatically because we didn’t remove tail
+            playSound("eat.wav"); // play eating sound
         }
     }
 
-    // === Check collisions with walls or itself ===
+    // === Check wall/self collision ===
     private void checkCollision() {
         Point head = snake.getFirst();
 
-        // wall collision
         if (head.x < 0 || head.x >= WIDTH / UNIT_SIZE || head.y < 0 || head.y >= HEIGHT / UNIT_SIZE) {
             running = false;
             timer.stop();
+            playSound("gameover.wav");
         }
 
-        // self collision
         for (int i = 1; i < snake.size(); i++) {
             if (head.equals(snake.get(i))) {
                 running = false;
                 timer.stop();
+                playSound("gameover.wav");
                 break;
             }
         }
     }
 
-    // === Key events (WASD + arrow keys) ===
+    // === Key controls ===
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_W, KeyEvent.VK_UP -> { if (direction != Direction.DOWN) direction = Direction.UP; }
